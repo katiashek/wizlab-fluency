@@ -1,10 +1,10 @@
 "use client"
 
 import type React from "react"
-
+import { useRouter } from "next/navigation" // 🔥 Import router for navigation
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Eye, EyeOff, Timer } from "lucide-react"
+import { Eye, EyeOff, Timer, Play } from "lucide-react" // 🔥 Added Play icon
 import { useState, useEffect } from "react"
 
 export function TaskTimer() {
@@ -13,6 +13,8 @@ export function TaskTimer() {
   const [isActive, setIsActive] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [inputMinutes, setInputMinutes] = useState("3")
+
+  const router = useRouter() // 🔥 Initialize router for navigation
 
   useEffect(() => {
     let interval: NodeJS.Timeout
@@ -51,6 +53,11 @@ export function TaskTimer() {
     setIsEditing(false)
   }
 
+  // 🔥 New function to start a practice session
+  const startPracticeSession = () => {
+    router.push("/practice") // Redirect to the practice tab
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -59,6 +66,7 @@ export function TaskTimer() {
           {showTimer ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
         </Button>
       </div>
+      
       {showTimer && (
         <div className="space-y-4">
           <div
@@ -93,7 +101,15 @@ export function TaskTimer() {
           </Button>
         </div>
       )}
+
+      {/* 🔥 New Start Practice Button */}
+      <Button
+        className="w-full bg-yellow-500 text-white flex items-center justify-center hover:bg-yellow-600 transition"
+        onClick={startPracticeSession}
+      >
+        <Play className="mr-2" />
+        Start Practice
+      </Button>
     </div>
   )
 }
-

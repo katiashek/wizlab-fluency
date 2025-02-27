@@ -1,5 +1,3 @@
-import "dotenv/config";
-
 let userConfig = undefined;
 try {
   userConfig = await import('./v0-user-next.config');
@@ -24,7 +22,7 @@ const nextConfig = {
     parallelServerCompiles: true,
   },
   env: {
-    FLUENCY_API_KEY: process.env.FLUENCY_API_KEY,  // 🔥 Exposes API Key to Next.js
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,  // 🔥 Exposes API Key to Next.js
   },
 };
 

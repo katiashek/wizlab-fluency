@@ -1,3 +1,5 @@
+"use client";
+
 import { useAuth } from '@/components/auth-provider';
 import { db, storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -11,8 +13,6 @@ interface SpeechRecognitionEvent extends Event {
 interface SpeechRecognitionErrorEvent extends Event {
   error: string;
 }
-
-"use client";
 
 declare global {
   interface Window {
@@ -285,7 +285,7 @@ export function SpeechInterface() {
               <p className="leading-relaxed text-primary italic">🧠 AI: {aiResponse}</p>
               {audioSource && (
                 <Button 
-                  variant="outline" 
+                  variant="default" 
                   size="sm" 
                   className="mt-2"
                   onClick={() => audioRef.current?.play()}

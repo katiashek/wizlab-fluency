@@ -1,11 +1,15 @@
-"use client";
+"use client"
 
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Plus, Bookmark, Download, Trash } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useAuth } from "@/components/auth-provider";
+import { db } from "@/lib/firebase";
+import { collection, addDoc, query, where, getDocs, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
 
 interface Word {
+  id: string;  // Add this for Firestore doc ID
   word: string;
   translation: string;
   explanation: string;
@@ -13,33 +17,34 @@ interface Word {
 
 export function WordBank() {
   const [words, setWords] = useState<Word[]>([]);
+  const { user } = useAuth();
 
-  // Load stored words from localStorage when the component mounts
+  // Fetch the user's word bank from Firestore
   useEffect(() => {
-    const storedWords = localStorage.getItem("wordBank");
-    if (storedWords) {
-      setWords(JSON.parse(storedWords));
+    if (user) {
+      const fetchWords = async () => {
+        const wordsQuery = query(collection(db, "words"), where("userId", "==", user.uid));
+        const querySnapshot = await getDocs(wordsQuery);
+        
+        const wordsList: Word[] = [];
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          wordsList.push({
+            id: doc.id,
+            word: data.word,
+            translation: data.translation,
+            explanation: data.explanation
+          });
+        });
+        
+        setWords(wordsList);
+      };
+      
+      fetchWords().catch(console.error);
     }
-  }, []);
+  }, [user]);
 
-  // Save words to localStorage whenever the list updates
-  useEffect(() => {
-    localStorage.setItem("wordBank", JSON.stringify(words));
-  }, [words]);
-
-  const addWord = () => {
-    const newWord = prompt("Enter the new word:");
-    const translation = prompt("Enter the translation:");
-    const explanation = prompt("Enter the explanation:");
-
-    if (newWord && translation && explanation) {
-      const updatedWords = [...words, { word: newWord, translation, explanation }];
-      setWords(updatedWords);
-      localStorage.setItem("wordBank", JSON.stringify(updatedWords));
-    }
-  };
-
-  const exportWordBank = (format: "csv" | "pdf") => {
+  const exportWordBank = async (format: "csv" | "pdf") => {
     if (format === "csv") {
       const csv = [
         ["Word", "Translation", "Explanation"],
@@ -55,16 +60,36 @@ export function WordBank() {
       document.body.appendChild(element);
       element.click();
       document.body.removeChild(element);
-    } else if (format === "pdf") {
-      // PDF export (needs third-party library like jsPDF)
-      alert("PDF export functionality will be added soon.");
     }
   };
 
-  const removeWord = (wordToRemove: string) => {
-    const updatedWords = words.filter((w) => w.word !== wordToRemove);
-    setWords(updatedWords);
-    localStorage.setItem("wordBank", JSON.stringify(updatedWords));
+  const addWord = async (newWord: Omit<Word, 'id'>) => {
+    if (user) {
+      try {
+        const docRef = await addDoc(collection(db, "words"), {
+          userId: user.uid,
+          word: newWord.word,
+          translation: newWord.translation,
+          explanation: newWord.explanation,
+          createdAt: serverTimestamp()
+        });
+        
+        setWords([...words, { ...newWord, id: docRef.id }]);
+      } catch (error) {
+        console.error("Error adding word:", error);
+      }
+    }
+  };
+
+  const removeWord = async (wordId: string) => {
+    if (user) {
+      try {
+        await deleteDoc(doc(db, "words", wordId));
+        setWords(words.filter((w) => w.id !== wordId));
+      } catch (error) {
+        console.error("Error removing word:", error);
+      }
+    }
   };
 
   return (
@@ -75,35 +100,39 @@ export function WordBank() {
           <Button variant="ghost" size="icon" onClick={() => exportWordBank("csv")}>
             <Download className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="icon" onClick={addWord}>
+          <Button variant="ghost" size="icon" onClick={() => {
+            // Show a modal or form to add a new word
+            const word = prompt("Enter word:");
+            const translation = prompt("Enter translation:");
+            const explanation = prompt("Enter explanation:");
+            
+            if (word && translation && explanation) {
+              addWord({ word, translation, explanation });
+            }
+          }}>
             <Plus className="w-4 h-4" />
           </Button>
         </div>
       </div>
       <div className="space-y-2">
-        {words.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No words saved yet. Click + to add words.</p>
-        ) : (
-          words.map((item) => (
-            <Card key={item.word} className="p-3">
-              <div className="flex items-start justify-between">
-                <div className="space-y-1">
-                  <div className="font-medium">{item.word}</div>
-                  <div className="text-sm text-muted-foreground">{item.translation}</div>
-                  <div className="text-xs text-gray-500">{item.explanation}</div>
-                </div>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeWord(item.word)}>
-                    <Trash className="w-4 h-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <Bookmark className="w-4 h-4" />
-                  </Button>
-                </div>
+        {words.map((item) => (
+          <Card key={item.id} className="p-3">
+            <div className="flex items-start justify-between">
+              <div className="space-y-1">
+                <div className="font-medium">{item.word}</div>
+                <div className="text-sm text-muted-foreground">{item.translation}</div>
               </div>
-            </Card>
-          ))
-        )}
+              <div className="flex gap-1">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeWord(item.id)}>
+                  <Trash className="w-4 h-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Bookmark className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </Card>
+        ))}
       </div>
     </div>
   );
